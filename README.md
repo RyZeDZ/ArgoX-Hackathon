@@ -1,5 +1,5 @@
 front start
-cd front/agro
+cd front
 npm install
 npm start
 'localhost:3000'
