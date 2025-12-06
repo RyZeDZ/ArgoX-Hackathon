@@ -1,3 +1,5 @@
+website and mobile application that wrap the ai model and show prediction results with visualization 
+
 front start
 cd front
 npm install
