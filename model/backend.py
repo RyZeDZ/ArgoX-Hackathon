@@ -1,9 +1,10 @@
 import pandas as pd
 import joblib
 import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-MODEL_FILE = "agrox_brain.pkl"
-SALINITY_FILE = "clean/genus_data_enriched.csv"
+MODEL_FILE = os.path.join(BASE_DIR, "agrox_brain.pkl")
+SALINITY_FILE = os.path.join(BASE_DIR, "clean/genus_data_enriched.csv")
 
 ALGERIAN_ZONES = {
     "Sahara": [
