@@ -1,0 +1,37 @@
+import 'package:latlong2/latlong.dart';
+
+// Lookup table: City Name -> GPS Coordinates
+const Map<String, LatLng> algeriaStatesCoords = {
+  'Algiers': LatLng(36.7528, 3.0420),
+  'Oran': LatLng(35.6969, -0.6331),
+  'Constantine': LatLng(36.3650, 6.6147),
+  'Annaba': LatLng(36.9006, 7.7669),
+  'Ghardaia': LatLng(32.4909, 3.6735),
+  'Ouargla': LatLng(31.9526, 5.3326),
+  'Bechar': LatLng(31.6167, -2.2167),
+  'Adrar': LatLng(27.8742, -0.2939),
+  'Tamanrasset': LatLng(22.7850, 5.5228),
+  'Setif': LatLng(36.1898, 5.4108),
+  'Batna': LatLng(35.5557, 6.1741),
+  'Biskra': LatLng(34.8510, 5.7334),
+  'Djelfa': LatLng(34.6728, 3.2630),
+  'Blida': LatLng(36.4700, 2.8277),
+  'Chlef': LatLng(36.1652, 1.3345),
+  'Tlemcen': LatLng(34.8783, -1.3150),
+  'Tiaret': LatLng(35.3710, 1.3169),
+  'Bejaia': LatLng(36.7511, 5.0641),
+  'Skikda': LatLng(36.8791, 6.9069),
+  'Tipaza': LatLng(36.5942, 2.4430),
+  'Boumerdes': LatLng(36.7598, 3.4730),
+  'Tizi Ouzou': LatLng(36.7118, 4.0459),
+  'Jijel': LatLng(36.8205, 5.7667),
+  'Mostaganem': LatLng(35.9311, 0.0891),
+  'Ain Temouchent': LatLng(35.3055, -1.1396),
+  'Laghouat': LatLng(33.8000, 2.8651),
+  'Oum El Bouaghi': LatLng(35.8754, 7.1135),
+  'Guelma': LatLng(36.4621, 7.4261),
+  'Medea': LatLng(36.2642, 2.7539),
+  'Mila': LatLng(36.4503, 6.2645),
+  'Mascara': LatLng(35.3966, 0.1503),
+  // Add other states here as needed
+};
