@@ -13,3 +13,5 @@ server should run on port 8000
 /model has the model .pkl , wrapped model and processed datasets
 
 agroX folder is mobile app source code in flutter
+
+important : in backend in views.py a path is hard coded , change based on you base dir
