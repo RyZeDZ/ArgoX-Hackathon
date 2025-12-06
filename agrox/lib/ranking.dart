@@ -20,7 +20,6 @@ class _RankingScreenState extends State<RankingScreen> {
   static const Color _bronze = Color(0xFFCD7F32);
   
   // --- API Configuration ---
-  // Ensure this IP is reachable from your emulator/device
   static const String baseUrl = "http://10.30.104.113:8000"; 
   final bool _isCrossBreedingMode = true; 
 
@@ -46,7 +45,6 @@ class _RankingScreenState extends State<RankingScreen> {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        
         setState(() {
           _rankings = data;
           _isLoading = false;
@@ -82,14 +80,11 @@ class _RankingScreenState extends State<RankingScreen> {
               ),
             ),
           ),
-          // Main Content
           SafeArea(
             child: Column(
               children: [
                 _buildHeader(context),
-                Expanded(
-                  child: _buildBody(),
-                ),
+                Expanded(child: _buildBody()),
               ],
             ),
           ),
@@ -98,7 +93,6 @@ class _RankingScreenState extends State<RankingScreen> {
     );
   }
 
-  // --- UI: Header ---
   Widget _buildHeader(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -124,47 +118,15 @@ class _RankingScreenState extends State<RankingScreen> {
     );
   }
 
-  // --- UI: Body List ---
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: _accentGreen),
-      );
+      return const Center(child: CircularProgressIndicator(color: _accentGreen));
     }
-
     if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, color: Colors.redAccent, size: 40),
-              const SizedBox(height: 16),
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.spaceGrotesk(color: Colors.white70),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: fetchRankings,
-                style: ElevatedButton.styleFrom(backgroundColor: _accentGreen),
-                child: const Text("Retry", style: TextStyle(color: Colors.black)),
-              )
-            ],
-          ),
-        ),
-      );
+      return Center(child: Text(_errorMessage!, style: const TextStyle(color: Colors.white)));
     }
-
     if (_rankings.isEmpty) {
-      return Center(
-        child: Text(
-          "No rankings available yet.",
-          style: GoogleFonts.spaceGrotesk(color: Colors.white54),
-        ),
-      );
+      return const Center(child: Text("No rankings available yet.", style: TextStyle(color: Colors.white54)));
     }
 
     return ListView.builder(
@@ -177,7 +139,6 @@ class _RankingScreenState extends State<RankingScreen> {
     );
   }
 
-  // --- UI: Individual Rank Card ---
   Widget _buildRankCard(int rank, dynamic item) {
     Color rankColor;
     if (rank == 1) rankColor = _gold;
@@ -210,7 +171,6 @@ class _RankingScreenState extends State<RankingScreen> {
         ),
         child: Row(
           children: [
-            // Rank Number
             Container(
               width: 40,
               height: 40,
@@ -229,7 +189,6 @@ class _RankingScreenState extends State<RankingScreen> {
               ),
             ),
             const SizedBox(width: 16),
-            // Plant Names
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -245,15 +204,11 @@ class _RankingScreenState extends State<RankingScreen> {
                   const SizedBox(height: 4),
                   Text(
                     zone,
-                    style: GoogleFonts.inter(
-                      color: Colors.white54,
-                      fontSize: 12,
-                    ),
+                    style: GoogleFonts.inter(color: Colors.white54, fontSize: 12),
                   ),
                 ],
               ),
             ),
-            // Score
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -265,13 +220,6 @@ class _RankingScreenState extends State<RankingScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                Text(
-                  "Potential",
-                  style: GoogleFonts.inter(
-                    color: _accentGreen.withOpacity(0.7),
-                    fontSize: 10,
-                  ),
-                ),
               ],
             ),
           ],
@@ -280,202 +228,173 @@ class _RankingScreenState extends State<RankingScreen> {
     );
   }
 
-  // --- LOGIC & UI: Detail Modal Window ---
+  // ==========================================
+  // UPDATED DETAIL MODAL
+  // ==========================================
   void _showMatchDetails(BuildContext context, dynamic item) {
-    final String p1 = item['Plant_A'] ?? 'Unknown';
-    final String p2 = item['Plant_B'] ?? 'Unknown';
+    // 1. EXTRACT DATA SAFELY
+    final String p1 = item['Plant_A'] ?? '?';
+    final String p2 = item['Plant_B'] ?? '?';
     final String zone = item['Zone'] ?? 'Unknown';
-    final String scoreStr = item['Score'].toString();
-    final double scoreVal = double.tryParse(scoreStr) ?? 0.0;
-
-    // Get explanation from API or use fallback
-    final String explanation = item['Explanation'] ?? 
-        _generateFallbackExplanation(p1, p2, scoreVal);
+    final String resilience = item['Resilience'] ?? 'Unknown';
+    final String explanation = item['Explanation'] ?? 'No analysis available.';
+    
+    // Scores
+    final double score = double.tryParse(item['Score']?.toString() ?? '0') ?? 0.0;
+    final double futureScore = double.tryParse(item['Future_Score']?.toString() ?? '0') ?? 0.0;
+    
+    // Maps
+    final Map<String, dynamic> traits = item['Traits'] ?? {};
+    final Map<String, dynamic> agronomics = item['Agronomics'] ?? {};
+    final List<dynamic> states = item['States'] ?? [];
 
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      isScrollControlled: true, // Allows sheet to be taller
+      isScrollControlled: true,
       builder: (context) {
         return BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
           child: Container(
-            height: MediaQuery.of(context).size.height * 0.75, // 75% height
+            height: MediaQuery.of(context).size.height * 0.85, 
             decoration: const BoxDecoration(
               color: Color(0xFF0F2027), 
               borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
               border: Border(top: BorderSide(color: Colors.white24, width: 1)),
             ),
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 0), // Bottom padding handled by scrollView
             child: Column(
               children: [
                 // Drag Handle
                 Container(
-                  width: 40, 
-                  height: 4,
+                  width: 40, height: 4,
                   margin: const EdgeInsets.only(bottom: 24),
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
                 ),
                 
                 // Scrollable Content
                 Expanded(
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.only(bottom: 30),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Title
-                        Center(
-                          child: Text(
-                            "HYBRID REPORT",
-                            style: GoogleFonts.spaceGrotesk(
-                              color: _accentGreen,
-                              fontSize: 14,
-                              letterSpacing: 2,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Plant Names Visual
+                        // Header: Plants
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            Expanded(child: _buildPlantAvatar(p1)),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 10),
-                              child: Icon(Icons.add_circle_outline, color: _accentGreen.withOpacity(0.5)),
-                            ),
-                            Expanded(child: _buildPlantAvatar(p2)),
+                            _buildPlantAvatar(p1),
+                            Icon(Icons.add_circle_outline, color: _accentGreen.withOpacity(0.5)),
+                            _buildPlantAvatar(p2),
                           ],
                         ),
-                        
                         const SizedBox(height: 30),
 
-                        // Score Card
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: _glassDark,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: _accentGreen.withOpacity(0.3)),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text("Compatibility Score", style: GoogleFonts.inter(color: Colors.white54, fontSize: 12)),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "$scoreStr%",
-                                    style: GoogleFonts.spaceGrotesk(
-                                      color: Colors.white,
-                                      fontSize: 36,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(
-                                height: 60,
-                                width: 60,
-                                child: CircularProgressIndicator(
-                                  value: scoreVal / 100,
-                                  backgroundColor: Colors.white10,
-                                  color: _accentGreen,
-                                  strokeWidth: 6,
-                                ),
-                              ),
-                            ],
-                          ),
+                        // 1. SCORES (Current & Future)
+                        Row(
+                          children: [
+                            Expanded(child: _buildScoreBox("Compatibility", score, _accentGreen)),
+                            const SizedBox(width: 12),
+                            Expanded(child: _buildScoreBox("Future Forecast", futureScore, const Color(0xFF3498DB))),
+                          ],
                         ),
+                        const SizedBox(height: 20),
 
+                        // 2. RESILIENCE & ZONE
+                        Row(
+                          children: [
+                            Expanded(child: _buildInfoBadge(Icons.shield, "Resilience", resilience)),
+                            const SizedBox(width: 12),
+                            Expanded(child: _buildInfoBadge(Icons.public, "Zone", zone)),
+                          ],
+                        ),
                         const SizedBox(height: 24),
 
-                        // Explanation / AI Analysis Card
+                        // 3. TRAITS (Progress Bars)
+                        Text("GENETIC TRAITS", style: _headerStyle),
+                        const SizedBox(height: 12),
                         Container(
                           padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.03),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.white10),
-                          ),
+                          decoration: _cardDecoration,
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.auto_awesome, color: _gold, size: 20),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    "AI ANALYSIS",
-                                    style: GoogleFonts.spaceGrotesk(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                explanation,
-                                style: GoogleFonts.inter(
-                                  color: Colors.white70,
-                                  fontSize: 14,
-                                  height: 1.6,
-                                ),
-                              ),
+                              _buildTraitBar("Drought Tolerance", traits['Drought_Tol']),
+                              const SizedBox(height: 16),
+                              _buildTraitBar("Growth Speed", traits['Growth_Speed']),
+                              const SizedBox(height: 16),
+                              _buildTraitBar("Salinity Tolerance", traits['Salinity_Tol']),
                             ],
                           ),
                         ),
-
                         const SizedBox(height: 24),
 
-                        // Details Grid
+                        // 4. AGRONOMICS (Grid)
+                        Text("AGRONOMICS", style: _headerStyle),
+                        const SizedBox(height: 12),
                         GridView.count(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           crossAxisCount: 2,
-                          childAspectRatio: 2.8,
+                          childAspectRatio: 2.5,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
                           children: [
-                            _buildDetailBox(Icons.public, "Zone", zone),
-                            _buildDetailBox(Icons.water_drop, "Watering", "Moderate"),
-                            _buildDetailBox(Icons.wb_sunny, "Sunlight", "High"), 
-                            _buildDetailBox(Icons.spa, "Growth", "Fast"), 
+                            _buildDetailBox(Icons.water_drop, "Water Usage", agronomics['Water_Usage'] ?? 'N/A'),
+                            _buildDetailBox(Icons.shower, "Irrigation", agronomics['Irrigation_Strategy'] ?? 'N/A'),
+                            _buildDetailBox(Icons.coronavirus, "Disease Risk", agronomics['Disease_Pressure'] ?? 'N/A'),
+                            _buildDetailBox(Icons.warning_amber, "Pathogen Alert", agronomics['Pathogen_Alert'] ?? 'None'),
                           ],
                         ),
+                        const SizedBox(height: 24),
+
+                        // 5. EXPLANATION
+                        Text("AI ANALYSIS", style: _headerStyle),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: _cardDecoration,
+                          child: Text(
+                            explanation,
+                            style: GoogleFonts.inter(color: Colors.white70, fontSize: 14, height: 1.5),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // 6. STATES
+                        if (states.isNotEmpty) ...[
+                          Text("RECOMMENDED STATES", style: _headerStyle),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: states.map((s) => Chip(
+                              backgroundColor: Colors.white10,
+                              label: Text(s.toString(), style: GoogleFonts.inter(color: const Color.fromARGB(255, 44, 36, 36), fontSize: 12)),
+                              avatar: const Icon(Icons.location_on, size: 14, color: _accentGreen),
+                            )).toList(),
+                          ),
+                        ],
                         
-                        const SizedBox(height: 30),
+                        const SizedBox(height: 40),
+                        
+                        // Close Button
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _accentGreen,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                            child: Text("Close Report", style: GoogleFonts.spaceGrotesk(color: Colors.black, fontWeight: FontWeight.bold)),
+                          ),
+                        )
                       ],
                     ),
                   ),
                 ),
-
-                // Close Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _accentGreen,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      "Close Report", 
-                      style: GoogleFonts.spaceGrotesk(color: Colors.black, fontWeight: FontWeight.bold)
-                    ),
-                  ),
-                )
               ],
             ),
           ),
@@ -484,26 +403,105 @@ class _RankingScreenState extends State<RankingScreen> {
     );
   }
 
-  // --- Helper Widgets & Functions ---
+  // --- HELPER STYLES & WIDGETS ---
+
+  TextStyle get _headerStyle => GoogleFonts.spaceGrotesk(
+    color: Colors.white54, 
+    fontSize: 12, 
+    fontWeight: FontWeight.bold, 
+    letterSpacing: 1.5
+  );
+
+  BoxDecoration get _cardDecoration => BoxDecoration(
+    color: Colors.white.withOpacity(0.05),
+    borderRadius: BorderRadius.circular(16),
+    border: Border.all(color: Colors.white10),
+  );
 
   Widget _buildPlantAvatar(String name) {
     return Column(
       children: [
         CircleAvatar(
-          radius: 28,
+          radius: 24,
           backgroundColor: Colors.white10,
           child: Text(
             name.isNotEmpty ? name[0].toUpperCase() : "?", 
-            style: GoogleFonts.spaceGrotesk(color: _accentGreen, fontSize: 20, fontWeight: FontWeight.bold)
+            style: GoogleFonts.spaceGrotesk(color: _accentGreen, fontSize: 18, fontWeight: FontWeight.bold)
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          name,
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.spaceGrotesk(color: Colors.white, fontWeight: FontWeight.w600),
+        Text(name, style: GoogleFonts.spaceGrotesk(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+      ],
+    );
+  }
+
+  Widget _buildScoreBox(String label, double value, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _glassDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: GoogleFonts.inter(color: Colors.white54, fontSize: 10)),
+          const SizedBox(height: 4),
+          Text("${value.toStringAsFixed(1)}%", style: GoogleFonts.spaceGrotesk(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          LinearProgressIndicator(value: value / 100, color: color, backgroundColor: Colors.white10, minHeight: 4),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoBadge(IconData icon, String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.white54, size: 16),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: GoogleFonts.inter(color: Colors.white38, fontSize: 9)),
+                Text(value, style: GoogleFonts.inter(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTraitBar(String label, dynamic value) {
+    double val = double.tryParse(value.toString()) ?? 0.0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: GoogleFonts.inter(color: Colors.white, fontSize: 13)),
+            Text("${val.toStringAsFixed(0)}%", style: GoogleFonts.inter(color: _accentGreen, fontSize: 13, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: val / 100,
+            backgroundColor: Colors.white10,
+            color: _accentGreen,
+            minHeight: 6,
+          ),
         ),
       ],
     );
@@ -511,37 +509,27 @@ class _RankingScreenState extends State<RankingScreen> {
 
   Widget _buildDetailBox(IconData icon, String label, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         children: [
-          Icon(icon, color: Colors.white38, size: 18),
-          const SizedBox(width: 10),
+          Icon(icon, color: Colors.white38, size: 16),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(label, style: GoogleFonts.inter(color: Colors.white38, fontSize: 9)),
-                Text(value, style: GoogleFonts.spaceGrotesk(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                Text(value, style: GoogleFonts.spaceGrotesk(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11), maxLines: 2, overflow: TextOverflow.ellipsis),
               ],
             ),
           )
         ],
       ),
     );
-  }
-
-  String _generateFallbackExplanation(String p1, String p2, double score) {
-    if (score >= 80) {
-      return "These two plants exhibit excellent genetic compatibility. The combined traits likely result in higher drought resistance and improved growth rates in the selected zone.";
-    } else if (score >= 50) {
-      return "A moderate match. While $p1 provides good structural integrity, $p2 might struggle with the nutrient requirements. Supplemental care may be required.";
-    } else {
-      return "Low compatibility detected. The environmental needs of $p1 conflict significantly with $p2, likely resulting in poor germination or weak root systems.";
-    }
   }
 }

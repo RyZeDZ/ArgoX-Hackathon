@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'map_data.dart'; 
-// import 'ranking.dart'; // <--- REMOVED: No longer needed here
 
 class ResultScreen extends StatelessWidget {
   final bool isCrossBreedingMode;
@@ -23,11 +22,12 @@ class ResultScreen extends StatelessWidget {
 
   static const Color _accentGreen = Color(0xFF2ECC71);
   static const Color _accentRed = Color(0xFFE74C3C);
+  static const Color _accentBlue = Color(0xFF3498DB);
   static const Color _glassDark = Color(0x0DFFFFFF);
 
   @override
   Widget build(BuildContext context) {
-    // Determine if we should show the map
+    // Determine compatibility based on boolean from JSON
     final bool isCompatible = !isCrossBreedingMode || (crossBreedingResult['Compatible'] == true);
 
     return Scaffold(
@@ -43,7 +43,6 @@ class ResultScreen extends StatelessWidget {
           "Analysis Results",
           style: GoogleFonts.spaceGrotesk(color: Colors.white),
         ),
-        // <--- REMOVED: The actions[] block containing the menu icon is gone
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
@@ -97,30 +96,29 @@ class ResultScreen extends StatelessWidget {
     );
   }
 
-  // ... [The rest of your widgets (_buildCrossBreedingResults, etc.) remain exactly the same] ...
-  
   // ==========================================
-  // 1. CROSS-BREEDING RESULT WIDGET
+  // 1. CROSS-BREEDING RESULT WIDGET (UPDATED)
   // ==========================================
   Widget _buildCrossBreedingResults() {
+    // --- 1. PARSE JSON DATA ---
     final bool isCompatible = crossBreedingResult['Compatible'] == true;
-    final double score = (crossBreedingResult['Score'] ?? 0).toDouble();
-    final double futureScore = (crossBreedingResult['Future_Score'] ?? 0).toDouble();
+    final double score = double.tryParse(crossBreedingResult['Score']?.toString() ?? '0') ?? 0.0;
+    final double futureScore = double.tryParse(crossBreedingResult['Future_Score']?.toString() ?? '0') ?? 0.0;
+    
     final String resilience = crossBreedingResult['Resilience'] ?? "N/A";
-    final String explanation = crossBreedingResult['Explanation'] ?? "No details.";
+    final String explanation = crossBreedingResult['Explanation'] ?? "No details available.";
     final String zone = crossBreedingResult['Zone'] ?? "Unknown";
-
+    
     final Map<String, dynamic> traits = crossBreedingResult['Traits'] ?? {};
-    final String drought = traits['Drought_Tol']?.toString() ?? "Medium";
-    final String salinity = traits['Salinity_Tol']?.toString() ?? "Low";
-    final String maturity = traits['Growth_Speed']?.toString() ?? "Average"; 
-    final String disease = traits['Disease_Res']?.toString() ?? "Standard"; 
+    final Map<String, dynamic> agronomics = crossBreedingResult['Agronomics'] ?? {};
+    final List<dynamic> states = crossBreedingResult['States'] ?? [];
 
     final Color statusColor = isCompatible ? _accentGreen : _accentRed;
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // BOX A: MAIN SCORE
+        // --- BOX A: MAIN SCORES ---
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(24),
@@ -145,7 +143,7 @@ class ResultScreen extends StatelessWidget {
                               fontWeight: FontWeight.bold)),
                       Text(isCompatible ? "Compatible Pair" : "Incompatible Pair",
                           style: GoogleFonts.inter(
-                              color: Colors.white70, fontSize: 16)),
+                              color: Colors.white70, fontSize: 14)),
                     ],
                   ),
                   Icon(
@@ -156,21 +154,50 @@ class ResultScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 24),
-              _buildSimpleRow("Future Viability", "${futureScore.toStringAsFixed(1)}%", true),
-              const SizedBox(height: 12),
-              _buildSimpleRow("Resilience Score", resilience, isCompatible),
+              // Future Score & Resilience
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildMiniScoreBox("Future Viability", "${futureScore.toStringAsFixed(1)}%", _accentBlue),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildMiniScoreBox("Resilience", resilience, Colors.orangeAccent),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
         
         const SizedBox(height: 16),
 
-        // BOX B: DETAILED REPORT
+        // --- BOX B: AGRONOMICS GRID ---
+        Text("AGRONOMICS", style: GoogleFonts.spaceGrotesk(color: Colors.white54, fontSize: 12, letterSpacing: 1.5)),
+        const SizedBox(height: 8),
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          childAspectRatio: 2.5,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          children: [
+            _buildDetailBox(Icons.water_drop, "Water Usage", agronomics['Water_Usage']?.toString() ?? 'N/A'),
+            _buildDetailBox(Icons.shower, "Irrigation", agronomics['Irrigation_Strategy']?.toString() ?? 'N/A'),
+            _buildDetailBox(Icons.coronavirus, "Disease Risk", agronomics['Disease_Pressure']?.toString() ?? 'N/A'),
+            _buildDetailBox(Icons.warning_amber, "Pathogen Alert", agronomics['Pathogen_Alert']?.toString() ?? 'None'),
+          ],
+        ),
+
+        const SizedBox(height: 24),
+
+        // --- BOX C: TRAITS & EXPLANATION ---
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.08),
+            color: Colors.white.withOpacity(0.05),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.white.withOpacity(0.05)),
           ),
@@ -180,10 +207,10 @@ class ResultScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("Analysis Report",
+                  Text("Genetic Traits",
                       style: GoogleFonts.spaceGrotesk(
                           color: Colors.white,
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.w600)),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -191,29 +218,50 @@ class ResultScreen extends StatelessWidget {
                       color: isCompatible ? _accentGreen.withOpacity(0.1) : _accentRed.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8)
                     ),
-                    child: Text(zone,
+                    child: Text(zone.toUpperCase(),
                       style: GoogleFonts.inter(
                           color: isCompatible ? _accentGreen : _accentRed,
-                          fontSize: 14,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
               const SizedBox(height: 20),
               
-              _buildTraitRow("Drought Tolerance", drought),
-              _buildTraitRow("Salinity Tolerance", salinity),
-              _buildTraitRow("Earliness / Maturity", maturity),
-              _buildTraitRow("Disease Resistance", disease),
-              
-              const SizedBox(height: 20),
-              const Divider(color: Colors.white10),
+              // Traits with Progress Bars
+              _buildTraitBar("Drought Tolerance", traits['Drought_Tol']),
               const SizedBox(height: 12),
+              _buildTraitBar("Growth Speed", traits['Growth_Speed']),
+              const SizedBox(height: 12),
+              _buildTraitBar("Salinity Tolerance", traits['Salinity_Tol']),
               
+              const SizedBox(height: 24),
+              const Divider(color: Colors.white10),
+              const SizedBox(height: 16),
+              
+              Text("AI ANALYSIS", style: GoogleFonts.inter(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
               Text(explanation,
                   style: GoogleFonts.inter(
                       color: Colors.white70, fontSize: 13, height: 1.5),
-              )
+              ),
+
+              if (states.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                Text("RECOMMENDED ZONES", style: GoogleFonts.inter(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: states.map((s) => Chip(
+                    backgroundColor: Colors.white10,
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+                    label: Text(s.toString(), style: GoogleFonts.inter(color: const Color.fromARGB(255, 63, 48, 48), fontSize: 11)),
+                    avatar: const Icon(Icons.location_on, size: 12, color: _accentGreen),
+                    visualDensity: VisualDensity.compact,
+                  )).toList(),
+                )
+              ]
             ],
           ),
         ),
@@ -225,16 +273,11 @@ class ResultScreen extends StatelessWidget {
   // 2. SINGLE GENUS RESULT WIDGET
   // ==========================================
   Widget _buildSingleGenusResults() {
-    final String inputPlant = crossBreedingResult['Plant_A'] ?? "Unknown";
-    final String bestMatch = crossBreedingResult['Best_Match'] ?? "Vicia";
-    final double score = (crossBreedingResult['Score'] ?? 0).toDouble();
+    // Basic Parsing for Single Genus (Assuming similar structure or subset)
+    final String inputPlant = crossBreedingResult['Plant_A'] ?? crossBreedingResult['plant'] ?? "Unknown";
+    final double score = double.tryParse(crossBreedingResult['Score']?.toString() ?? '0') ?? 0.0;
     final String explanation = crossBreedingResult['Explanation'] ?? "Analysis complete.";
-
     final Map<String, dynamic> traits = crossBreedingResult['Traits'] ?? {};
-    final String drought = traits['Drought_Tol']?.toString() ?? "High";
-    final String salinity = traits['Salinity_Tol']?.toString() ?? "Medium";
-    final String maturity = traits['Growth_Speed']?.toString() ?? "Early"; 
-    final String disease = traits['Disease_Res']?.toString() ?? "Resistant";
 
     return Column(
       children: [
@@ -249,126 +292,35 @@ class ResultScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "GENUS OPTIMIZATION",
-                    style: GoogleFonts.inter(
-                      color: Colors.white54,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  const Icon(Icons.hub, color: _accentGreen, size: 20),
-                ],
-              ),
+              Text("GENUS OPTIMIZATION", style: GoogleFonts.inter(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 2)),
               const SizedBox(height: 24),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text("INPUT", style: GoogleFonts.inter(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 4),
-                        Text(
-                          inputPlant,
-                          style: GoogleFonts.spaceGrotesk(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Icon(Icons.compare_arrows, color: _accentGreen.withOpacity(0.6), size: 28),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text("BEST MATCH", style: GoogleFonts.inter(color: _accentGreen, fontSize: 10, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 4),
-                        Text(
-                          bestMatch,
-                          style: GoogleFonts.spaceGrotesk(color: _accentGreen, fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-              const Divider(color: Colors.white10),
-              const SizedBox(height: 24),
-
+              
               Center(
                 child: Column(
                   children: [
-                    Text(
-                      "${score.toStringAsFixed(1)}%",
-                      style: GoogleFonts.spaceGrotesk(
-                        color: Colors.white,
-                        fontSize: 48,
-                        fontWeight: FontWeight.bold,
-                        height: 1.0,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Hybridization Potential",
-                      style: GoogleFonts.inter(color: Colors.white70, fontSize: 14),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-              const Divider(color: Colors.white10),
-              const SizedBox(height: 24),
-
-              Text(
-                "ANALYSIS REPORT",
-                style: GoogleFonts.inter(
-                  color: Colors.white54,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.5,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildTraitRow("Drought Tolerance", drought),
-                    _buildTraitRow("Salinity Tolerance", salinity),
-                    _buildTraitRow("Earliness / Maturity", maturity),
-                    _buildTraitRow("Disease Resistance", disease),
-                    
-                    const SizedBox(height: 16),
-                    const Divider(color: Colors.white10),
+                    Text(inputPlant, style: GoogleFonts.spaceGrotesk(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
-                    
-                    Text(
-                      explanation,
-                      style: GoogleFonts.inter(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 13,
-                        height: 1.6,
-                      ),
-                    ),
+                    Text("${score.toStringAsFixed(1)}%", style: GoogleFonts.spaceGrotesk(color: _accentGreen, fontSize: 56, fontWeight: FontWeight.bold, height: 1.0)),
+                    Text("Optimization Score", style: GoogleFonts.inter(color: Colors.white70, fontSize: 14)),
                   ],
                 ),
               ),
+
+              const SizedBox(height: 32),
+              
+              // Reusing Trait Bar Logic
+              if (traits.isNotEmpty) ...[
+                _buildTraitBar("Drought Tolerance", traits['Drought_Tol']),
+                const SizedBox(height: 12),
+                _buildTraitBar("Growth Speed", traits['Growth_Speed']),
+                const SizedBox(height: 12),
+                _buildTraitBar("Salinity Tolerance", traits['Salinity_Tol']),
+                const SizedBox(height: 24),
+                const Divider(color: Colors.white10),
+                const SizedBox(height: 16),
+              ],
+
+              Text(explanation, style: GoogleFonts.inter(color: Colors.white.withOpacity(0.9), fontSize: 13, height: 1.6)),
             ],
           ),
         ),
@@ -380,42 +332,84 @@ class ResultScreen extends StatelessWidget {
   // HELPER WIDGETS
   // ==========================================
 
-  Widget _buildTraitRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildMiniScoreBox(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            "• $label",
-            style: GoogleFonts.inter(
-              color: Colors.white70,
-              fontSize: 13,
-            ),
-          ),
-          Text(
-            value,
-            style: GoogleFonts.spaceGrotesk(
-              color: _accentGreen,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          Text(label, style: GoogleFonts.inter(color: Colors.white54, fontSize: 9)),
+          const SizedBox(height: 4),
+          Text(value, style: GoogleFonts.spaceGrotesk(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
         ],
       ),
     );
   }
 
-  Widget _buildSimpleRow(String label, String val, bool isGood) {
-    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-      Text(label, style: GoogleFonts.inter(color: Colors.white38, fontSize: 14)), 
-      Text(val, style: GoogleFonts.inter(color: isGood ? _accentGreen : _accentRed, fontSize: 14, fontWeight: FontWeight.w600))
-    ]);
+  Widget _buildDetailBox(IconData icon, String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.white38, size: 16),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(label, style: GoogleFonts.inter(color: Colors.white38, fontSize: 9)),
+                const SizedBox(height: 2),
+                Text(value, style: GoogleFonts.spaceGrotesk(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
+              ],
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTraitBar(String label, dynamic value) {
+    // Safely parse value to double (0-100)
+    double val = double.tryParse(value.toString()) ?? 50.0;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
+            Text("${val.toStringAsFixed(0)}%", style: GoogleFonts.inter(color: _accentGreen, fontSize: 12, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: val / 100,
+            backgroundColor: Colors.white10,
+            color: _accentGreen,
+            minHeight: 6,
+          ),
+        ),
+      ],
+    );
   }
 }
 
 // ==========================================
-// SATELLITE MAP WIDGETS
+// SATELLITE MAP WIDGETS (Unchanged)
 // ==========================================
 class SatelliteMapWidget extends StatelessWidget {
   final List<MapZone> zones;
@@ -424,6 +418,7 @@ class SatelliteMapWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Centered on Algeria
     final LatLng countryCenter = const LatLng(28.0, 2.0);
     final Color scanColor = zones.isNotEmpty ? zones.first.color : Colors.cyanAccent;
 
